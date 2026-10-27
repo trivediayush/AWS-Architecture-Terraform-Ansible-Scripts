@@ -1,0 +1,6 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+environment = "shared"
+availability_zones = ["ap-south-1a", "ap-south-1b"]
+enable_nat_gateway = true
+single_nat_gateway = false

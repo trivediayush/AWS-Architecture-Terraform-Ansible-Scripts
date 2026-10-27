@@ -1,0 +1,21 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+environment = "production"
+
+# All of these auto-read from upstream component state when left empty.
+ecs_cluster_name = ""
+private_subnet_ids = []
+ecs_security_group_id = ""
+target_group_arn = ""
+task_execution_role_arn = ""
+task_role_arn = ""
+log_group_name = ""
+
+# Confirm these with the app owner before apply; service health checks will fail on placeholders.
+image_uri = "<acct>.dkr.ecr.ap-south-1.amazonaws.com/sunroof/shared-app:v1"
+app_port = 8080
+task_cpu = 1024
+task_memory = 2048
+desired_count = 2
+container_environment = {}
+container_secrets = {}

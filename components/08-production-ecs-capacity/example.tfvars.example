@@ -1,0 +1,7 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+environment = "production"
+private_subnet_ids = [] # empty = auto-read from 00-network
+ecs_security_group_id = "" # empty = auto-read from 01-security-groups
+ecs_instance_profile_name = "" # empty = auto-read from 02-iam
+key_pair_name = "sunroof-key"

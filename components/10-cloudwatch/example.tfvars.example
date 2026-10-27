@@ -1,0 +1,11 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+log_retention_days = 30
+# Fill outputs after each stack is applied; leave blank to create log groups only.
+staging_instance_id = ""
+rds_identifier = ""
+alb_arn_suffix = ""
+target_group_arn_suffix = ""
+ecs_cluster_name = ""
+ecs_service_name = ""
+alarm_email = ""

@@ -1,0 +1,6 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+# Fill after 04/05/07 are applied; leave empty to skip those policies.
+staging_bucket_arn = ""
+production_bucket_arn = ""
+task_secret_arns = []

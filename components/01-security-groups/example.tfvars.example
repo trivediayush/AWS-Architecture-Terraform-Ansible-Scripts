@@ -1,0 +1,5 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+vpc_id = "" # empty = auto-read from ../00-network/terraform.tfstate
+app_port = 8080
+admin_ssh_cidr = "203.0.113.10/32" # Replace with your current public IP/32

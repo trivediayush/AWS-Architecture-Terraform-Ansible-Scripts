@@ -1,0 +1,3 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+state_bucket_name = "replace-with-globally-unique-state-bucket"

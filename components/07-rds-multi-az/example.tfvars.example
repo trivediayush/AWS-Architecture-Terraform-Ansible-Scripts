@@ -1,0 +1,9 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+db_identifier = "sunroof-postgres"
+database_subnet_ids = [] # empty = auto-read from 00-network
+rds_security_group_id = "" # empty = auto-read from 01-security-groups
+master_username = "dbadmin"
+instance_class = "REPLACE_AFTER_CLIENT_CONFIRMATION"
+engine_version = "REPLACE_AFTER_APP_COMPATIBILITY_CHECK"
+final_snapshot_identifier = "sunroof-postgres-final-20261026"

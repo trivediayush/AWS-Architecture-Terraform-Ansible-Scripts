@@ -1,0 +1,4 @@
+aws_region = "ap-south-1"
+project_name = "sunroof"
+environment = "staging"
+bucket_name = "replace-with-globally-unique-staging-bucket"

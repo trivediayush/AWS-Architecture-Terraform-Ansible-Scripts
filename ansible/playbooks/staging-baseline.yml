@@ -1,0 +1,27 @@
+---
+- name: Apply minimal baseline to the single staging EC2 instance
+  hosts: env_staging
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Update installed packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_only: true
+
+    - name: Install basic operations utilities
+      ansible.builtin.dnf:
+        name:
+          - curl
+          - jq
+          - unzip
+          - chrony
+        state: present
+
+    - name: Ensure time synchronization is enabled
+      ansible.builtin.service:
+        name: chronyd
+        enabled: true
+        state: started
+

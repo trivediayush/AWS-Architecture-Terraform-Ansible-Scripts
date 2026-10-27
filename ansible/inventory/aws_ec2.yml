@@ -1,0 +1,12 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-south-1 # Replace with the approved AWS region before running.
+filters:
+  instance-state-name: running
+  tag:Environment: staging
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ec2-user'"
