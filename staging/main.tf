@@ -1,5 +1,6 @@
-# Staging environment: one public EC2, staging S3 bucket, log group, status alarm.
-# Depends on ../shared (subnets, SG, instance profile, alarm topic) only.
+# Staging environment: one public EC2, staging S3 bucket. No alarms/log groups —
+# this is a test environment.
+# Depends on ../shared (subnets, SG, instance profile) only.
 
 data "terraform_remote_state" "shared" {
   backend = "local"
@@ -11,8 +12,6 @@ locals {
   subnet_id             = var.subnet_id != "" ? var.subnet_id : data.terraform_remote_state.shared.outputs.public_subnet_ids[0]
   security_group_id     = data.terraform_remote_state.shared.outputs.staging_security_group_id
   instance_profile_name = data.terraform_remote_state.shared.outputs.staging_instance_profile_name
-  alarm_topic_arn       = data.terraform_remote_state.shared.outputs.alarm_topic_arn
-  alarm_actions         = local.alarm_topic_arn != "" ? [local.alarm_topic_arn] : []
 }
 
 # Latest Amazon Linux 2023 x86_64 AMI via EC2 API (no SSM).
@@ -103,24 +102,4 @@ resource "aws_iam_role_policy" "staging_s3" {
   ] })
 }
 
-# ---------- observability ----------
 
-resource "aws_cloudwatch_log_group" "staging" {
-  name              = "/aws/ec2/${var.project_name}/staging"
-  retention_in_days = var.log_retention_days
-  tags              = { Environment = "staging" }
-}
-
-resource "aws_cloudwatch_metric_alarm" "staging_status_check" {
-  alarm_name          = "${var.project_name}-staging-ec2-status-check"
-  comparison_operator = "GreaterThanOrEqualToThreshold"
-  evaluation_periods  = 2
-  metric_name         = "StatusCheckFailed_Instance"
-  namespace           = "AWS/EC2"
-  period              = 60
-  statistic           = "Maximum"
-  threshold           = 1
-  treat_missing_data  = "missing"
-  alarm_actions       = local.alarm_actions
-  dimensions          = { InstanceId = aws_instance.staging.id }
-}

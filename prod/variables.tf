@@ -82,9 +82,9 @@ variable "ecs_instance_type" {
   default     = "c6g.xlarge"
 }
 variable "ecs_ami_id" {
-  description = "AMI for ECS capacity nodes. Default: Ubuntu Server 26.04 LTS arm64. Plain (non-ECS-optimized) images get the agent via user_data."
+  description = "Optional AMI override for ECS capacity nodes; empty = latest ECS-optimized Amazon Linux 2023 arm64. Must be arm64 for c6g."
   type        = string
-  default     = "ami-01027cdb5f7b38e21"
+  default     = ""
 }
 variable "ecs_root_volume_size_gb" {
   type    = number

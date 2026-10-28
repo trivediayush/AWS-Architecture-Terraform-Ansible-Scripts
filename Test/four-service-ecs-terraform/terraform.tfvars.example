@@ -1,0 +1,38 @@
+# Copy to terraform.tfvars and edit. NEVER commit terraform.tfvars.
+
+aws_region   = "ap-south-1"
+project_name = "four-svc-test"
+environment  = "test"
+
+# REQUIRED: restrict ALB port 80 to your public IP.
+# Find it with: (Invoke-RestMethod -Uri "https://checkip.amazonaws.com").Trim()
+allowed_admin_cidr = "203.0.113.10/32" # <-- replace with YOUR ip/32
+
+# Optional overrides (defaults shown):
+# vpc_cidr            = "10.40.0.0/16"
+# public_subnet_cidrs = ["10.40.1.0/24", "10.40.2.0/24"]
+# app_subnet_cidrs    = ["10.40.11.0/24", "10.40.12.0/24"]
+# db_subnet_cidrs     = ["10.40.21.0/24", "10.40.22.0/24"]
+# instance_type       = "c6g.xlarge"
+# key_pair_name       = "sunroof-key" # existing EC2 key pair for the hosts
+# container_insights  = false
+# log_retention_days  = 7
+
+# Database
+db_engine         = "postgres" # or "mysql"
+db_instance_class = "db.t4g.micro"
+db_name           = "appdb"
+db_username       = "appuser"
+# db_password is NOT here on purpose.
+# Set it via environment variable instead (8-128 chars; no /, @, " or space):
+#   $env:TF_VAR_db_password = "replace-with-a-strong-unique-password"
+
+# Sample images (all multi-arch incl. arm64). Repoint to your ECR URLs to use
+# your own images.
+# frontend_image = "nginx:1.29.8-alpine"
+# api_image      = "ealen/echo-server:0.9.2"
+# bl_image       = "ealen/echo-server:0.9.2"
+# mqtt_image     = "eclipse-mosquitto:2.0.22"
+
+# S3 bucket name (leave empty to auto-generate <project>-app-<account-id>):
+# s3_bucket_name = ""

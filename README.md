@@ -5,7 +5,7 @@ Three independent Terraform roots. Each has its own state and can be applied/des
 | Root | Contents | Depends on |
 |---|---|---|
 | `shared/` | VPC, subnets, NAT, security groups, IAM roles/profiles, ECR repo, SNS alarm topic | nothing — apply first |
-| `staging/` | Staging EC2, staging S3, staging log group + status alarm, staging IAM policy | `shared/` state |
+| `staging/` | Staging EC2, staging S3, staging IAM policy (no alarms/logs — test env) | `shared/` state |
 | `prod/` | Production S3, RDS Multi-AZ Postgres, ECS cluster + ASG capacity, ALB + target group + listeners, ECS service, prod alarms | `shared/` state |
 
 `staging/` and `prod/` never reference each other — destroy or rebuild either without touching the other.
@@ -22,7 +22,7 @@ All values are pinned in each root's `terraform.tfvars` — no `-var` flags need
 
 ## Known notes (learned during bring-up)
 
-- **ap-south-1 t4g capacity is thin.** Staging is `t3.medium` x86_64, ECS nodes `t3.large`, RDS `db.t3.medium`. If a create fails with `InsufficientInstanceCapacity`, retry later, drop a size, or change `subnet_id` (staging) to the other public subnet.
+- **ap-south-1 t4g capacity is thin.** Staging is `t3.medium` x86_64, ECS nodes `c6g.xlarge` (Graviton), RDS `db.t3.medium`. If a create fails with `InsufficientInstanceCapacity`, retry later, drop a size, or change `subnet_id` (staging) to the other public subnet.
 - **ALB runs HTTP-only until `certificate_arn` is set** in `prod/terraform.tfvars` (imported IAM server cert). Port 80 forwards to the app meanwhile; with a cert it becomes a 443 listener + 80→443 redirect automatically.
 - **RDS destroy takes a final snapshot** (`final_snapshot_identifier`) and `deletion_protection` must be flipped to `false` first.
 - **ALB access-log bucket** won't destroy while non-empty — empty it first or set `access_logs_force_destroy = true`.

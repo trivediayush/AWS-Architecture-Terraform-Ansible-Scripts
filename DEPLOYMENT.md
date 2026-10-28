@@ -57,13 +57,13 @@ Caveat: staging and production share one VPC and one RDS instance by design (sep
 - VPC, 6 subnets across 2 AZs, IGW, NAT gateway(s), route tables
 - 4 security groups (ALB / staging / ECS / RDS), least-privilege rules
 - IAM: staging instance profile, ECS instance profile, task execution role, task role, scoped S3/secret policies
-- Staging EC2 `t4g.medium` (encrypted gp3, IMDSv2)
+- Staging EC2 `t3.medium` x86_64 on latest Amazon Linux 2023 (encrypted gp3, IMDSv2)
 - Staging + production S3 buckets (encrypted, versioned, lifecycle)
 - ECR repo (immutable tags, scan-on-push, lifecycle)
 - RDS PostgreSQL Multi-AZ (encrypted, managed master password in Secrets Manager, backups, final snapshot, Performance Insights, storage autoscaling)
 - ECS cluster + launch template + ASG (2× `c6g.xlarge`) + capacity provider, Container Insights
 - ALB + `ip` target group + access-logs bucket (HTTPS listener only after cert ARN supplied)
-- CloudWatch log groups, alarms (EC2 status, RDS CPU/storage, ALB 5xx/unhealthy, ECS CPU), optional SNS email topic
+- CloudWatch log group + alarms, production only (RDS CPU/storage, ALB 5xx/unhealthy, ECS CPU), optional SNS email topic
 - ECS task definition + service (component 11, once image/port confirmed)
 
 ### Left for manual console / CLI work

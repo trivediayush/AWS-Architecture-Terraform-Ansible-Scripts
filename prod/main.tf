@@ -15,19 +15,34 @@ locals {
   ecs_security_group_id = data.terraform_remote_state.shared.outputs.ecs_security_group_id
   rds_security_group_id = data.terraform_remote_state.shared.outputs.rds_security_group_id
 
-  ecs_instance_profile_name   = data.terraform_remote_state.shared.outputs.ecs_instance_profile_name
-  task_execution_role_arn     = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
-  task_execution_role_name    = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_name
-  task_role_arn               = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
-  task_role_name              = data.terraform_remote_state.shared.outputs.ecs_task_role_name
-  ecs_instance_role_name      = data.terraform_remote_state.shared.outputs.ecs_instance_profile_name
-  alarm_topic_arn             = data.terraform_remote_state.shared.outputs.alarm_topic_arn
-  alarm_actions               = local.alarm_topic_arn != "" ? [local.alarm_topic_arn] : []
+  ecs_instance_profile_name = data.terraform_remote_state.shared.outputs.ecs_instance_profile_name
+  task_execution_role_arn   = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_arn
+  task_execution_role_name  = data.terraform_remote_state.shared.outputs.ecs_task_execution_role_name
+  task_role_arn             = data.terraform_remote_state.shared.outputs.ecs_task_role_arn
+  task_role_name            = data.terraform_remote_state.shared.outputs.ecs_task_role_name
+  ecs_instance_role_name    = data.terraform_remote_state.shared.outputs.ecs_instance_profile_name
+  alarm_topic_arn           = data.terraform_remote_state.shared.outputs.alarm_topic_arn
+  alarm_actions             = local.alarm_topic_arn != "" ? [local.alarm_topic_arn] : []
 }
 
 data "aws_caller_identity" "this" {}
 data "aws_elb_service_account" "this" {}
 data "aws_vpc" "selected" { id = local.vpc_id }
+
+# Latest ECS-optimized Amazon Linux 2023 arm64 (c6g = Graviton). Baked-in ECS
+# agent — user_data only writes the cluster name.
+data "aws_ami" "ecs_al2023" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "name"
+    values = ["al2023-ami-ecs-hvm-*-arm64"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
 
 # ---------- production s3 ----------
 
@@ -68,40 +83,41 @@ resource "aws_s3_bucket_lifecycle_configuration" "production" {
 }
 
 # ---------- rds ----------
+# disabled: running ECS-only for now — uncomment to restore the database.
 
-resource "aws_db_subnet_group" "this" {
-  name       = "${var.db_identifier}-subnets"
-  subnet_ids = local.database_subnet_ids
-  tags       = { Name = "${var.db_identifier}-subnets" }
-}
+# resource "aws_db_subnet_group" "this" {
+#   name       = "${var.db_identifier}-subnets"
+#   subnet_ids = local.database_subnet_ids
+#   tags       = { Name = "${var.db_identifier}-subnets" }
+# }
 
-resource "aws_db_instance" "this" {
-  identifier                      = var.db_identifier
-  engine                          = "postgres"
-  engine_version                  = var.engine_version
-  instance_class                  = var.instance_class
-  allocated_storage               = var.allocated_storage_gb
-  max_allocated_storage           = var.max_allocated_storage_gb
-  storage_type                    = "gp3"
-  storage_encrypted               = true
-  multi_az                        = true
-  performance_insights_enabled    = true
-  apply_immediately               = var.apply_immediately
-  db_name                         = var.db_name
-  username                        = var.master_username
-  manage_master_user_password     = true
-  db_subnet_group_name            = aws_db_subnet_group.this.name
-  vpc_security_group_ids          = [local.rds_security_group_id]
-  publicly_accessible             = false
-  backup_retention_period         = var.backup_retention_days
-  auto_minor_version_upgrade      = true
-  deletion_protection             = var.deletion_protection
-  skip_final_snapshot             = false
-  final_snapshot_identifier       = var.final_snapshot_identifier
-  copy_tags_to_snapshot           = true
-  enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-  tags                            = { Name = var.db_identifier, Environment = "production" }
-}
+# resource "aws_db_instance" "this" {
+#   identifier                      = var.db_identifier
+#   engine                          = "postgres"
+#   engine_version                  = var.engine_version
+#   instance_class                  = var.instance_class
+#   allocated_storage               = var.allocated_storage_gb
+#   max_allocated_storage           = var.max_allocated_storage_gb
+#   storage_type                    = "gp3"
+#   storage_encrypted               = true
+#   multi_az                        = true
+#   performance_insights_enabled    = true
+#   apply_immediately               = var.apply_immediately
+#   db_name                         = var.db_name
+#   username                        = var.master_username
+#   manage_master_user_password     = true
+#   db_subnet_group_name            = aws_db_subnet_group.this.name
+#   vpc_security_group_ids          = [local.rds_security_group_id]
+#   publicly_accessible             = false
+#   backup_retention_period         = var.backup_retention_days
+#   auto_minor_version_upgrade      = true
+#   deletion_protection             = var.deletion_protection
+#   skip_final_snapshot             = false
+#   final_snapshot_identifier       = var.final_snapshot_identifier
+#   copy_tags_to_snapshot           = true
+#   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
+#   tags                            = { Name = var.db_identifier, Environment = "production" }
+# }
 
 # ---------- ecs capacity ----------
 
@@ -116,35 +132,19 @@ resource "aws_ecs_cluster" "this" {
 
 resource "aws_launch_template" "this" {
   name_prefix            = "${var.project_name}-ecs-"
-  image_id               = var.ecs_ami_id
+  image_id               = var.ecs_ami_id != "" ? var.ecs_ami_id : data.aws_ami.ecs_al2023.id
   instance_type          = var.ecs_instance_type
   key_name               = var.key_pair_name
   vpc_security_group_ids = [local.ecs_security_group_id]
   iam_instance_profile { name = local.ecs_instance_profile_name }
   update_default_version = true
-  # Ubuntu has no baked-in ECS agent — run it as a container (documented path
-  # for non-Amazon-Linux hosts). If switching back to an ECS-optimized AL2023
-  # AMI, the docker run is still harmless but the /etc/ecs/ecs.config lines
-  # below cover that case too.
+  # ECS-optimized AL2023 has the agent baked in — point it at the cluster.
   user_data = base64encode(<<-EOT
     #!/bin/bash
     set -euo pipefail
-    if ! apt-get update -y; then
-      # AL2023 path — baked-in agent just needs the cluster name.
-      echo ECS_CLUSTER=${aws_ecs_cluster.this.name} >> /etc/ecs/ecs.config
-      echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
-      systemctl enable --now ecs
-      exit 0
-    fi
-    apt-get install -y docker.io
-    systemctl enable --now docker
-    docker run --name ecs-agent --detach=true --restart=on-failure:10 \
-      --net=host \
-      --volume=/var/run/docker.sock:/var/run/docker.sock \
-      --volume=/var/log/ecs:/log --volume=/var/lib/ecs:/data \
-      --env=ECS_CLUSTER=${aws_ecs_cluster.this.name} \
-      --env=ECS_ENABLE_CONTAINER_METADATA=true \
-      amazon/amazon-ecs-agent:latest
+    echo ECS_CLUSTER=${aws_ecs_cluster.this.name} >> /etc/ecs/ecs.config
+    echo ECS_ENABLE_CONTAINER_METADATA=true >> /etc/ecs/ecs.config
+    systemctl enable --now ecs
     EOT
   )
   block_device_mappings {
@@ -412,7 +412,7 @@ resource "aws_ecs_service" "app" {
   }
   # A listener must exist first — without it the TG has no associated LB and
   # CreateService fails with InvalidParameterException.
-  depends_on = [aws_lb_listener.https, aws_lb_listener.http_forward, aws_lb_listener.http_redirect]
+  depends_on                        = [aws_lb_listener.https, aws_lb_listener.http_forward, aws_lb_listener.http_redirect]
   health_check_grace_period_seconds = 60
   deployment_circuit_breaker {
     enable   = true
@@ -420,7 +420,7 @@ resource "aws_ecs_service" "app" {
   }
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 200
-  tags = { Environment = "production" }
+  tags                               = { Environment = "production" }
 }
 
 # ---------- task role scoped policies ----------
@@ -456,33 +456,33 @@ resource "aws_iam_role_policy" "ecs_task_secrets" {
 
 # ---------- alarms ----------
 
-resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
-  alarm_name          = "${var.project_name}-rds-high-cpu"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 3
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/RDS"
-  period              = 300
-  statistic           = "Average"
-  threshold           = 80
-  treat_missing_data  = "missing"
-  alarm_actions       = local.alarm_actions
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
-}
+# resource "aws_cloudwatch_metric_alarm" "rds_cpu" {
+#   alarm_name          = "${var.project_name}-rds-high-cpu"
+#   comparison_operator = "GreaterThanThreshold"
+#   evaluation_periods  = 3
+#   metric_name         = "CPUUtilization"
+#   namespace           = "AWS/RDS"
+#   period              = 300
+#   statistic           = "Average"
+#   threshold           = 80
+#   treat_missing_data  = "missing"
+#   alarm_actions       = local.alarm_actions
+#   dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
+# }
 
-resource "aws_cloudwatch_metric_alarm" "rds_free_storage" {
-  alarm_name          = "${var.project_name}-rds-low-storage"
-  comparison_operator = "LessThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "FreeStorageSpace"
-  namespace           = "AWS/RDS"
-  period              = 300
-  statistic           = "Average"
-  threshold           = 21474836480 # 20 GiB
-  treat_missing_data  = "missing"
-  alarm_actions       = local.alarm_actions
-  dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
-}
+# resource "aws_cloudwatch_metric_alarm" "rds_free_storage" {
+#   alarm_name          = "${var.project_name}-rds-low-storage"
+#   comparison_operator = "LessThanThreshold"
+#   evaluation_periods  = 1
+#   metric_name         = "FreeStorageSpace"
+#   namespace           = "AWS/RDS"
+#   period              = 300
+#   statistic           = "Average"
+#   threshold           = 21474836480 # 20 GiB
+#   treat_missing_data  = "missing"
+#   alarm_actions       = local.alarm_actions
+#   dimensions          = { DBInstanceIdentifier = aws_db_instance.this.identifier }
+# }
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "${var.project_name}-alb-5xx"

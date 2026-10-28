@@ -51,10 +51,3 @@ variable "bucket_name" {
   description = "Globally unique staging bucket name; set explicitly."
   type        = string
 }
-
-# --- alarms ---
-
-variable "log_retention_days" {
-  type    = number
-  default = 30
-}
